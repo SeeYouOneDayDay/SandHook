@@ -1,6 +1,7 @@
 package com.swift.sandhook;
 
 import android.os.Build;
+import android.util.Log;
 
 import com.swift.sandhook.annotation.HookMode;
 import com.swift.sandhook.blacklist.HookBlackList;
@@ -22,15 +23,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SandHook {
 
-    static Map<Member,HookWrapper.HookEntity> globalHookEntityMap = new ConcurrentHashMap<>();
-    static Map<Method,HookWrapper.HookEntity> globalBackupMap = new ConcurrentHashMap<>();
+    static Map<Member, HookWrapper.HookEntity> globalHookEntityMap = new ConcurrentHashMap<>();
+    static Map<Method, HookWrapper.HookEntity> globalBackupMap = new ConcurrentHashMap<>();
 
     private static HookModeCallBack hookModeCallBack;
+
     public static void setHookModeCallBack(HookModeCallBack hookModeCallBack) {
         SandHook.hookModeCallBack = hookModeCallBack;
     }
 
     private static HookResultCallBack hookResultCallBack;
+
     public static void setHookResultCallBack(HookResultCallBack hookResultCallBack) {
         SandHook.hookResultCallBack = hookResultCallBack;
     }
@@ -77,6 +80,7 @@ public class SandHook {
 
         if (entity == null)
             throw new HookErrorException("null hook entity");
+        Log.d("sanbo", "SandHook.hook " + entity);
 
         Member target = entity.target;
         Method hook = entity.hook;
@@ -91,22 +95,32 @@ public class SandHook {
         if (HookBlackList.canNotHook(target))
             throw new HookErrorException("method <" + entity.target.toString() + "> can not hook, because of in blacklist!");
 
-
+        Log.d("sanbo", "SandHook.hook"
+                + "\r\n\tdelayHook: " + SandHookConfig.delayHook
+                + "\r\n\tcanWork: " + PendingHookHandler.canWork()
+                + "\r\n\tisStaticAndNoInited: " + ClassStatusUtils.isStaticAndNoInited(entity.target)
+        );
         if (SandHookConfig.delayHook && PendingHookHandler.canWork() && ClassStatusUtils.isStaticAndNoInited(entity.target)) {
+            Log.d("sanbo", "1SandHook.hook  will addPendingHook");
             PendingHookHandler.addPendingHook(entity);
             return;
         } else if (entity.initClass) {
+            Log.d("sanbo", "SandHook.hook  initClass:" + entity.initClass
+                    + "\r\n\t will resolveStaticMethod target: " + target
+                    + "\r\n\t MakeInitializedClassVisibilyInitialized"
+            );
             resolveStaticMethod(target);
             MakeInitializedClassVisibilyInitialized(getThreadId());
         }
-
+        Log.d("sanbo", "SandHook.hook  resolveStaticMethod backup. backup:" + backup);
         resolveStaticMethod(backup);
 
         if (backup != null && entity.resolveDexCache) {
+            Log.d("sanbo", "SandHook.hook  WILL  resolveMethod");
             SandHookMethodResolver.resolveMethod(hook, backup);
         }
         if (target instanceof Method) {
-            ((Method)target).setAccessible(true);
+            ((Method) target).setAccessible(true);
         }
 
         int mode = HookMode.AUTO;
@@ -116,10 +130,15 @@ public class SandHook {
 
         globalHookEntityMap.put(entity.target, entity);
 
+
+        Log.d("sanbo", "SandHook.hook  mode:"+mode);
+
         int res;
         if (mode != HookMode.AUTO) {
+            Log.d("sanbo", "SandHook.hook  AUTO will hookMethod");
             res = hookMethod(target, hook, backup, mode);
         } else {
+            Log.d("sanbo", "SandHook.hook  OTHER  will hookMethod");
             HookMode hookMode = hook.getAnnotation(HookMode.class);
             res = hookMethod(target, hook, backup, hookMode == null ? HookMode.AUTO : hookMode.value());
         }
@@ -204,6 +223,9 @@ public class SandHook {
     }
 
     public static boolean resolveStaticMethod(Member method) {
+
+        Log.d("sanbo", "resolveStaticMethod method:" + method);
+
         //ignore result, just call to trigger resolve
         if (method == null)
             return true;
@@ -367,7 +389,8 @@ public class SandHook {
             try {
                 profile.delete();
                 profile.createNewFile();
-            } catch (Throwable throwable) {}
+            } catch (Throwable throwable) {
+            }
             FileUtils.chmod(profile.getAbsolutePath(), FileUtils.FileMode.MODE_IRUSR);
             return true;
         } catch (Throwable throwable) {
@@ -381,17 +404,21 @@ public class SandHook {
 
     //default on!
     public static native void setInlineSafeCheck(boolean check);
+
     public static native void skipAllSafeCheck(boolean skip);
 
     private static native int hookMethod(Member originMethod, Method hookMethod, Method backupMethod, int hookMode);
 
     public static native void ensureMethodCached(Method hook, Method backup);
+
     public static native void ensureDeclareClass(Member origin, Method backup);
 
     public static native boolean compileMethod(Member member);
+
     public static native boolean deCompileMethod(Member member, boolean disableJit);
 
     public static native boolean canGetObject();
+
     public static native Object getObjectNative(long thread, long address);
 
     public static native boolean is64Bit();

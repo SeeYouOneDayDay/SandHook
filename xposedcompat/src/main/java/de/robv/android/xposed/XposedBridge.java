@@ -377,5 +377,14 @@ public final class XposedBridge {
 			this.parameterTypes = parameterTypes;
 			this.returnType = returnType;
 		}
+
+		@Override
+		public String toString() {
+			return "AdditionalHookInfo{" +
+					"callbacks=" + callbacks +
+					", parameterTypes=" + Arrays.toString(parameterTypes) +
+					", returnType=" + returnType +
+					'}';
+		}
 	}
 }

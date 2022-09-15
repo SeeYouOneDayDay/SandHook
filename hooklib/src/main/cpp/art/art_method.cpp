@@ -6,6 +6,7 @@
 #include "../includes/cast_art_method.h"
 #include "../includes/hide_api.h"
 #include "../includes/utils.h"
+#include "../includes/log.h"
 
 extern int SDK_INT;
 extern bool DEBUG;
@@ -189,6 +190,7 @@ void ArtMethod::flushCache() {
 }
 
 void ArtMethod::backup(ArtMethod *backup) {
+    LOGE("inside backup size: %d ",size());
     memcpy(backup, this, size());
 }
 

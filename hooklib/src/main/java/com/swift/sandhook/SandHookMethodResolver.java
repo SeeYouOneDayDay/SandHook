@@ -8,6 +8,8 @@ import static com.swift.sandhook.SandHook.artMethodClass;
 import static com.swift.sandhook.SandHook.getField;
 import static com.swift.sandhook.SandHook.hasJavaArtMethod;
 
+import android.util.Log;
+
 public class SandHookMethodResolver {
 
     public static Field resolvedMethodsField;
@@ -127,12 +129,17 @@ public class SandHookMethodResolver {
         if (canResolvedInJava && artMethodField != null) {
             // in java
             try {
+                Log.d("sanbo","inside resolveMethod resolveInJava");
+
                 resolveInJava(hook, backup);
             } catch (Exception e) {
+                Log.d("sanbo","inside resolveMethod Exception resolveInNative");
                 // in native
                 resolveInNative(hook, backup);
             }
         } else {
+            Log.d("sanbo","inside resolveMethod resolveInNative");
+
             // in native
             resolveInNative(hook, backup);
         }

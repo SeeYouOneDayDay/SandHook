@@ -94,6 +94,7 @@ bool doHookWithReplacement(JNIEnv* env,
     originMethod->disableInterpreterForO();
     originMethod->disableFastInterpreterForQ();
 
+    //初始化跳板--其实是一段可执行指令
     SandHook::HookTrampoline* hookTrampoline = trampolineManager.installReplacementTrampoline(originMethod, hookMethod, backupMethod);
     if (hookTrampoline != nullptr) {
         originMethod->setQuickCodeEntry(hookTrampoline->replacement->getCode());

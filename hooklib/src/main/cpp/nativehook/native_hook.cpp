@@ -32,7 +32,9 @@ bool isSandHooker(char *const args[]) {
 
     return false;
 }
-
+// dex2oat --compile-pic
+// dex2oat --compile-pic --inline-max-code-units=0
+// dex2oat --compile-pic --inline-depth-limit=0
 char **build_new_argv(char *const argv[]) {
 
     int orig_argv_count = getArrayItemCount(argv);
@@ -92,5 +94,5 @@ namespace SandHook {
         return nativeHookNoBackup(reinterpret_cast<void *>(execve),
                            reinterpret_cast<void *>(disableDex2oat ? fake_execve_disable_oat : fake_execve_disable_inline));
     }
-    
+
 }

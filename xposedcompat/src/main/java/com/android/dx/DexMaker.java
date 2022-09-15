@@ -531,7 +531,8 @@ public final class DexMaker {
         if (result.exists()) {
             try {
                 deleteOldDex(result);
-            } catch (Throwable throwable) {}
+            } catch (Throwable throwable) {
+			}
         }
 
         /*

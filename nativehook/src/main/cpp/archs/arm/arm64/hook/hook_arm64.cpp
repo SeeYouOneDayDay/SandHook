@@ -157,12 +157,18 @@ void *InlineHookArm64Android::SingleInstHook(void *origin, void *replace) {
 
     //build backup method
     CodeRelocateA64 relocate = CodeRelocateA64(assembler_backup);
+    // 向backup中复制原指令 & 指令修复
     backup = relocate.Relocate(origin, code_container_inline->Size(), nullptr);
+    // 向backup中设置跳转回剩余指令的指令
 #define __ assembler_backup.
     Label* origin_addr_label = new Label();
+    // ldr x17, #origin_addr_offset
     __ Ldr(IP1, origin_addr_label);
+    // br x17
     __ Br(IP1);
+    // 更新ldr x17, origin_addr_offset中的origin_addr_offset为当前相对偏移地址，相当于ldr x17,#0x8
     __ Emit(origin_addr_label);
+    // unitData: origin指令下一条指令地址
     __ Emit((Addr) origin + code_container_inline->Size());
     __ Finish();
 #undef __

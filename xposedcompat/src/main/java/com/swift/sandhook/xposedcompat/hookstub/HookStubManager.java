@@ -13,6 +13,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -60,14 +61,18 @@ public class HookStubManager {
 
 
     public static HookMethodEntity getHookMethodEntity(Member origin, XposedBridge.AdditionalHookInfo additionalHookInfo) {
+        DexLog.i("sanbo", "===============inside getHookMethodEntity============" + origin);
 
         if (!support()) {
+            DexLog.d("sanbo", "getHookMethodEntity not support support ");
             return null;
         }
+
 
         Class[] parType;
         Class retType;
         boolean isStatic = Modifier.isStatic(origin.getModifiers());
+        DexLog.d("sanbo", "getHookMethodEntity isStatic:" + isStatic);
 
         if (origin instanceof Method) {
             Method method = (Method) origin;
@@ -80,38 +85,68 @@ public class HookStubManager {
         } else {
             return null;
         }
+        DexLog.d("sanbo", "getHookMethodEntity retType:" + retType
+                + "\r\n\tparType:" + Arrays.asList(parType)
+        );
 
-        if (!ParamWrapper.support(retType))
+        if (!ParamWrapper.support(retType)) {
+            DexLog.d("sanbo", "getHookMethodEntity not support " + retType);
             return null;
+        }
 
+
+        // 非静态方法，增加一个参数
+        // 理解增加的是 自身
         int needStubArgCount = isStatic ? 0 : 1;
-
+        DexLog.d("sanbo", "getHookMethodEntity needStubArgCount(非静态+1):" + needStubArgCount);
         if (parType != null) {
             needStubArgCount += parType.length;
             if (needStubArgCount > MAX_STUB_ARGS)
                 return null;
             if (is64Bit && needStubArgCount > MAX_64_ARGS)
                 return null;
-            for (Class par:parType) {
+            for (Class par : parType) {
                 if (!ParamWrapper.support(par))
                     return null;
             }
         } else {
             parType = new Class[0];
         }
+        DexLog.d("sanbo", "getHookMethodEntity needStubArgCount:" + needStubArgCount);
 
         synchronized (HookStubManager.class) {
+            // 拥有方法，还未进行绑定
             StubMethodsInfo stubMethodInfo = getStubMethodPair(is64Bit, needStubArgCount);
-            if (stubMethodInfo == null)
+            DexLog.d("sanbo", "getHookMethodEntity stubMethodInfo 获取完成。详情如下:\r\n" + stubMethodInfo);
+
+            if (stubMethodInfo == null) {
                 return null;
+            }
+            // 交换 几个方法到一个数据结构
             HookMethodEntity entity = new HookMethodEntity(origin, stubMethodInfo.hook, stubMethodInfo.backup);
             entity.retType = retType;
             entity.parType = parType;
+
+            DexLog.d("sanbo", "getHookMethodEntity"
+                    + "\r\n\thasStubBackup: " + hasStubBackup
+                    +(hasStubBackup?("\r\n\ttryCompileAndResolveCallOriginMethod:" + tryCompileAndResolveCallOriginMethod(entity.backup, stubMethodInfo.args, stubMethodInfo.index)):"")
+            );
             if (hasStubBackup && !tryCompileAndResolveCallOriginMethod(entity.backup, stubMethodInfo.args, stubMethodInfo.index)) {
                 DexLog.w("internal stub <" + entity.hook.getName() + "> call origin compile failure, skip use internal stub");
+                DexLog.d("sanbo", "getHookMethodEntity internal stub <" + entity.hook.getName() + "> call origin compile failure, skip use internal stub");
                 return null;
             } else {
+                // 获取方法ID
                 int id = getMethodId(stubMethodInfo.args, stubMethodInfo.index);
+                DexLog.d("sanbo", "getHookMethodEntity getMethodId "
+                        //int args, int index
+                        +  "\r\n\targs:  " + stubMethodInfo.args
+                        +  "\r\n\tindex:  " + stubMethodInfo.index
+                        +  "\r\n\tResult:  " + id
+                        + "\r\n\torigin:  " + origin
+                        + "\r\n\tentity:\r\n\t\t" + entity
+                        + "\r\n\tadditionalHookInfo:  " + additionalHookInfo
+                );
                 originMethods[id] = origin;
                 hookMethodEntities[id] = entity;
                 additionalHookInfos[id] = additionalHookInfo;
@@ -122,7 +157,8 @@ public class HookStubManager {
 
     public static int getMethodId(int args, int index) {
         int id = index;
-        for (int i = 0;i < args;i++) {
+        DexLog.d("sanbo", "\r\n\t\ngetMethodId -----stubSizes"+Arrays.toString(stubSizes));
+        for (int i = 0; i < args; i++) {
             id += stubSizes[i];
         }
         return id;
@@ -153,32 +189,71 @@ public class HookStubManager {
             this.hook = hook;
             this.backup = backup;
         }
+
+        @Override
+        public String toString() {
+            return "StubMethodsInfo{"
+                    + "\r\n\t args=" + args
+                    + ",\r\n\t index=" + index
+                    + ",\r\n\t hook=" + hook
+                    + ",\r\n\t backup=" + backup
+                    + '}';
+        }
     }
 
     private static synchronized StubMethodsInfo getStubMethodPair(boolean is64Bit, int stubArgs) {
+        DexLog.d("sanbo", "\r\n\t\tinside getStubMethodPair ( " + stubArgs + " ).....");
 
         stubArgs = getMatchStubArgsCount(stubArgs);
+        DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair .....stubArgs:" + stubArgs);
 
         if (stubArgs < 0)
             return null;
 
         int curUseStubIndex = curUseStubIndexes[stubArgs].getAndIncrement();
+
+        DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....curUseStubIndex:" + curUseStubIndex);
+
+        // 64位 每个参数都是long, 32位全是int
         Class[] pars = getFindMethodParTypes(is64Bit, stubArgs);
+        DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....pars:" + Arrays.asList(pars));
+
         try {
             if (is64Bit) {
-                Method hook = MethodHookerStubs64.class.getDeclaredMethod(getHookMethodName(curUseStubIndex), pars);
-                Method backup = hasStubBackup ? MethodHookerStubs64.class.getDeclaredMethod(getBackupMethodName(curUseStubIndex), pars) : StubMethodsFactory.getStubMethod();
+                // 获取方法名字
+                String name = getHookMethodName(curUseStubIndex);
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....64....HookMethodName:" + name);
+                // 获取hook方法
+                Method hook = MethodHookerStubs64.class.getDeclaredMethod(name, pars);
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....64....hook:" + hook);
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....64....hasStubBackup:" + hasStubBackup);
+                // 获取backuo方法
+
+                String backupMethodName = getBackupMethodName(curUseStubIndex);
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....64....backupMethodName(" + (hasStubBackup ? "使用" : "不使用") + "):" + backupMethodName);
+                Method backup = hasStubBackup ? MethodHookerStubs64.class.getDeclaredMethod(backupMethodName, pars) : StubMethodsFactory.getStubMethod();
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....64....backup:" + backup);
                 if (hook == null || backup == null)
                     return null;
+                // 存储到对象中统一返回
                 return new StubMethodsInfo(stubArgs, curUseStubIndex, hook, backup);
             } else {
-                Method hook = MethodHookerStubs32.class.getDeclaredMethod(getHookMethodName(curUseStubIndex), pars);
-                Method backup = hasStubBackup ? MethodHookerStubs32.class.getDeclaredMethod(getBackupMethodName(curUseStubIndex), pars) : StubMethodsFactory.getStubMethod();
+                String name = getHookMethodName(curUseStubIndex);
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....32....HookMethodName:" + name);
+                Method hook = MethodHookerStubs32.class.getDeclaredMethod(name, pars);
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....32....hook:" + hook);
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....32....hasStubBackup:" + hasStubBackup);
+
+                String backupMethodName = getBackupMethodName(curUseStubIndex);
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....32....backupMethodName(" + (hasStubBackup ? "使用" : "不使用") + "):" + backupMethodName);
+                Method backup = hasStubBackup ? MethodHookerStubs32.class.getDeclaredMethod(backupMethodName, pars) : StubMethodsFactory.getStubMethod();
+                DexLog.d("sanbo", "\r\n\t\tgetStubMethodPair.....32....backup:" + backup);
                 if (hook == null || backup == null)
                     return null;
                 return new StubMethodsInfo(stubArgs, curUseStubIndex, hook, backup);
             }
         } catch (Throwable throwable) {
+            DexLog.d("sanbo", Log.getStackTraceString(throwable));
             return null;
         }
     }
@@ -198,9 +273,20 @@ public class HookStubManager {
     }
 
     public static boolean tryCompileAndResolveCallOriginMethod(Method backupMethod, int args, int index) {
+
+        DexLog.d("sanbo", "\r\n\t\t\tinside tryCompileAndResolveCallOriginMethod " +
+                "\r\n\t\t\t\tbackupMethod:" + backupMethod
+                + "\r\n\t\t\t\targs:" + args
+                + "\r\n\t\t\t\tindex:" + index
+        );
+
         Method method = getCallOriginMethod(args, index);
+
+        DexLog.d("sanbo", "\r\n\t\t\t\ttryCompileAndResolveCallOriginMethod getCallOriginMethod method:" + method);
         if (method != null) {
             SandHookMethodResolver.resolveMethod(method, backupMethod);
+            DexLog.d("sanbo", "\r\n\t\t\t\ttryCompileAndResolveCallOriginMethod will build! call SandHook.compileMethod");
+
             return SandHook.compileMethod(method);
         } else {
             return false;
@@ -208,7 +294,7 @@ public class HookStubManager {
     }
 
     public static int getMatchStubArgsCount(int stubArgs) {
-        for (int i = stubArgs;i <= MAX_STUB_ARGS;i++) {
+        for (int i = stubArgs; i <= MAX_STUB_ARGS; i++) {
             if (curUseStubIndexes[i].get() < stubSizes[i])
                 return i;
         }
@@ -220,11 +306,11 @@ public class HookStubManager {
             return null;
         Class[] args = new Class[stubArgs];
         if (is64Bit) {
-            for (int i = 0;i < stubArgs;i++) {
+            for (int i = 0; i < stubArgs; i++) {
                 args[i] = long.class;
             }
         } else {
-            for (int i = 0;i < stubArgs;i++) {
+            for (int i = 0; i < stubArgs; i++) {
                 args[i] = int.class;
             }
         }
@@ -307,7 +393,7 @@ public class HookStubManager {
         // call "after method" callbacks
         int afterIdx = beforeIdx - 1;
         do {
-            Object lastResult =  param.getResult();
+            Object lastResult = param.getResult();
             Throwable lastThrowable = param.getThrowable();
 
             try {
@@ -379,7 +465,7 @@ public class HookStubManager {
         // call "after method" callbacks
         int afterIdx = beforeIdx - 1;
         do {
-            Object lastResult =  param.getResult();
+            Object lastResult = param.getResult();
             Throwable lastThrowable = param.getThrowable();
 
             try {

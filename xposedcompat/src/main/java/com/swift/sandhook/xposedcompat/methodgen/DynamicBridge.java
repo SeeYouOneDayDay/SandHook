@@ -30,12 +30,20 @@ public final class DynamicBridge {
     private static File dexDir;
 
     //use internal stubs
-    private final static Map<Member,HookMethodEntity> entityMap = new HashMap<>();
+    private final static Map<Member, HookMethodEntity> entityMap = new HashMap<>();
     //use dex maker
     private final static HashMap<Member, Method> hookedInfo = new HashMap<>();
 
     public static synchronized void hookMethod(Member hookMethod, XposedBridge.AdditionalHookInfo additionalHookInfo) {
 
+
+        DexLog.d("sanbo",
+                "==================================================================================="
+                        + "\r\n\t==================================================================================="
+                        + "\r\n\t===inside hookMethod(" + hookMethod + ")==="
+                        + "\r\n\t==================================================================================="
+                        + "\r\n\t==================================================================================="
+        );
         if (!checkMember(hookMethod)) {
             return;
         }
@@ -60,10 +68,18 @@ public final class DynamicBridge {
             long timeStart = System.currentTimeMillis();
             HookMethodEntity stub = null;
             if (XposedCompat.useInternalStub && !HookBlackList.canNotHookByStub(hookMethod) && !HookBlackList.canNotHookByBridge(hookMethod)) {
+
+                DexLog.d("sanbo", "hookMethod----->" + hookMethod + "-------------" + ((Method) hookMethod).getParameterTypes().length);
+                DexLog.d("sanbo", "hookMethod additionalHookInfo----->" + additionalHookInfo);
                 stub = HookStubManager.getHookMethodEntity(hookMethod, additionalHookInfo);
+                DexLog.i("sanbo", "hookMethod --------stub:\r\n\t" + stub);
             }
             if (stub != null) {
+                DexLog.d("sanbo", "1 hookMethod 即将开始hook");
                 SandHook.hook(new HookWrapper.HookEntity(hookMethod, stub.hook, stub.backup, false));
+                DexLog.d("sanbo", "1 hookMethod----->" + stub.origin);
+                DexLog.d("sanbo", "1 backupMethod----->" + stub.backup);
+                DexLog.d("sanbo", "1 callBackupMethod----->" + stub.hook);
                 entityMap.put(hookMethod, stub);
             } else {
                 HookMaker hookMaker;
@@ -74,8 +90,14 @@ public final class DynamicBridge {
                 }
                 hookMaker.start(hookMethod, additionalHookInfo,
                         new ProxyClassLoader(DynamicBridge.class.getClassLoader(), hookMethod.getDeclaringClass().getClassLoader()), dexDir == null ? null : dexDir.getAbsolutePath());
+                DexLog.d("sanbo", "2 hookMethod----->" + hookMaker.getHookMethod());
+                DexLog.d("sanbo", "2 backupMethod----->" + hookMaker.getBackupMethod());
+                DexLog.d("sanbo", "2 callBackupMethod----->" + hookMaker.getCallBackupMethod());
                 hookedInfo.put(hookMethod, hookMaker.getCallBackupMethod());
             }
+            DexLog.v("sanbo", "结果 hookedInfo:" + hookedInfo
+                    + "\r\n\tentityMap:" + entityMap);
+            DexLog.d("sanbo", "hook method <" + hookMethod.toString() + "> cost " + (System.currentTimeMillis() - timeStart) + " ms, by " + (stub != null ? "internal stub" : "dex maker"));
             DexLog.d("hook method <" + hookMethod.toString() + "> cost " + (System.currentTimeMillis() - timeStart) + " ms, by " + (stub != null ? "internal stub" : "dex maker"));
             Trace.endSection();
         } catch (Throwable e) {

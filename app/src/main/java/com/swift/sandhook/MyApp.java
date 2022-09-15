@@ -1,6 +1,5 @@
 package com.swift.sandhook;
 
-import android.app.Activity;
 import android.app.Application;
 import android.os.Build;
 import android.util.Log;
@@ -65,19 +64,19 @@ public class MyApp extends Application {
         XposedCompat.classLoader = getClassLoader();
         XposedCompat.isFirstApplication= true;
 
-        XposedHelpers.findAndHookMethod(Activity.class, "onResume", new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                super.beforeHookedMethod(param);
-                Log.e("XposedCompat", "beforeHookedMethod: " + param.method.getName());
-            }
-
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                super.afterHookedMethod(param);
-                Log.e("XposedCompat", "afterHookedMethod: " + param.method.getName());
-            }
-        });
+//        XposedHelpers.findAndHookMethod(Activity.class, "onResume", new XC_MethodHook() {
+//            @Override
+//            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+//                super.beforeHookedMethod(param);
+//                Log.e("XposedCompat", "beforeHookedMethod: " + param.method.getName());
+//            }
+//
+//            @Override
+//            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                super.afterHookedMethod(param);
+//                Log.e("XposedCompat", "afterHookedMethod: " + param.method.getName());
+//            }
+//        });
 
 
         XposedHelpers.findAndHookMethod(MainActivity.class, "testStub", TestClass.class, int.class, String.class, boolean.class, char.class, String.class, new XC_MethodHook() {
@@ -95,30 +94,46 @@ public class MyApp extends Application {
             }
         });
 
-        XposedHelpers.findAndHookMethod(PendingHookTest.class, "test", new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                super.beforeHookedMethod(param);
-                param.returnEarly = true;
-            }
+//        XposedHelpers.findAndHookMethod(PendingHookTest.class, "test", new XC_MethodHook() {
+//            @Override
+//            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+//                super.beforeHookedMethod(param);
+//                param.returnEarly = true;
+//            }
+//
+//            @Override
+//            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                super.afterHookedMethod(param);
+//            }
+//        });
+//
+//        XposedBridge.hookAllConstructors(Thread.class, new XC_MethodHook() {
+//            @Override
+//            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+//                super.beforeHookedMethod(param);
+//            }
+//
+//            @Override
+//            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                super.afterHookedMethod(param);
+//            }
+//        });
 
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                super.afterHookedMethod(param);
-            }
-        });
 
-        XposedBridge.hookAllConstructors(Thread.class, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                super.beforeHookedMethod(param);
-            }
-
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                super.afterHookedMethod(param);
-            }
-        });
+//        //  没参数
+//        XposedHelpers.findAndHookMethod(Build.class, "getRadioVersion", new XC_MethodHook() {
+//            @Override
+//            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+//                super.beforeHookedMethod(param);
+//                param.returnEarly = true;
+//            }
+//
+//            @Override
+//            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                super.afterHookedMethod(param);
+//                Log.i("sanbo","测试结果 result:"+param.getResult());
+//            }
+//        });
     }
 
     public static int getPreviewSDKInt() {

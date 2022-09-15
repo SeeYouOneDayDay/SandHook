@@ -46,7 +46,8 @@ public final class Label {
 
     int id = -1;
 
-    public Label() {}
+    public Label() {
+	}
 
     boolean isEmpty() {
         return instructions.isEmpty();

@@ -109,6 +109,7 @@ namespace SandHook {
             return retSpace;
         }
     label_alloc_new_space:
+        // 分配空间
         mmapRes = mmap(NULL, EXE_BLOCK_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC,
                              MAP_ANON | MAP_PRIVATE, -1, 0);
         if (mmapRes == MAP_FAILED) {
@@ -136,6 +137,7 @@ namespace SandHook {
 
         replacementHookTrampoline = new ReplacementHookTrampoline();
         replacementHookTrampoline->init();
+        // 分配可执行空间
         replacementHookTrampolineSpace = allocExecuteSpace(replacementHookTrampoline->getCodeLen());
         if (replacementHookTrampolineSpace == 0) {
             LOGE("hook error due to can not alloc execute space!");

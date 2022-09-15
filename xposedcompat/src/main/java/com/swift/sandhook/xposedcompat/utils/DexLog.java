@@ -50,4 +50,14 @@ public class DexLog {
     }
 
 
+
+    public static int v(String tag,String s) {
+        return Log.v(tag, s);
+    }
+    public static int d(String tag,String s) {
+        return Log.d(tag, s);
+    }
+    public static int i(String tag,String s) {
+        return Log.i(tag, s);
+    }
 }
