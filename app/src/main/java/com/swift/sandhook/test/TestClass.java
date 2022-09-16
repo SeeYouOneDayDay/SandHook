@@ -1,33 +1,38 @@
 package com.swift.sandhook.test;
 
-import com.swift.sandhook.MainActivity;
+import android.util.Log;
 
 public class TestClass {
 
+    String HOOK_IN = "sanbo.TestClass.HOOK_IN";
+    String ORIGIN = "sanbo.TestClass.ORIGIN";
     public int a = 1;
     int b = 2;
+
+    public TestClass() {
+    }
 
     public TestClass(int a) {
         this.a = a + 1;
     }
 
-    public void add1 () {
+    public boolean add1() {
         a++;
         b++;
-        throw new RuntimeException("test exception");
+        return false;
     }
 
-    public void add2 () {
-        a++;
-        b++;
+    public boolean add2() {
+        Log.i(ORIGIN, "add2 result:" + (a + b));
+        return false;
     }
 
-    public void testNewHookApi (MainActivity activity, int x) {
-        x++;
-        a++;
-        b++;
+    public Integer testStub(int a) {
+        Log.e(ORIGIN, "call testStub origin" + a);
+        return a;
     }
 
     public native void jni_test();
+
 
 }

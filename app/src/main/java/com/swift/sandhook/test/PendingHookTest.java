@@ -12,8 +12,9 @@ public class PendingHookTest {
         }
     }
 
-    public static void test() {
+    public static boolean test() {
         Log.e("PendingHookTest", "hook failure!");
+        return false;
     }
 
 }
